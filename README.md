@@ -1,54 +1,77 @@
-# Pharmacy Store Application — Team Repository
+# Pharmacy Store Application
 
-Shared starter repository for the 12-module Pharmacy Store Application. It establishes conventions and a minimal API scaffold; it is **not** the finished application.
+The project has two application folders: `backend` (FastAPI) and `frontend` (Flutter). The backend uses PostgreSQL as its only database.
 
-## Product principles
-- Mobile-first, practical for small/rural medical shops; support Telugu and English in the product UI.
-- The Inventory, Batches & Stock Ledger is the source of truth for stock. All stock changes must be recorded through controlled ledger movements.
-- Purchase-invoice OCR and end-of-day sales-report OCR create **drafts**. Stock changes only after a user reviews and confirms the document.
-- Duplicate report submissions/retries must not apply the same movement twice.
-- Do not put MongoDB credentials in frontend/mobile code. Only the backend connects to Atlas.
-- Never silently delete posted stock movements; use a reversal or adjustment with an audit trail.
+## Requirements
 
-## Repository layout
-```text
-backend/        FastAPI API scaffold, shared configuration, module packages and tests
-frontend/       Framework-neutral starting notes; add the team's chosen frontend here
-docs/           Architecture, API conventions, module ownership and data rules
-.github/        Pull request and issue templates
+- Python 3.11 or later
+- PostgreSQL 13 or later
+- Flutter/Dart versions allowed by `frontend/pubspec.yaml`
+- Chrome, Windows desktop, or an Android emulator/device
+- Tesseract OCR installed on the backend host for bill-image OCR
+
+## Configure PostgreSQL
+
+1. Start the local PostgreSQL service. If it is already listening on port 5432, do not start a second server.
+2. Create `medishop_dev` only if it does not already exist. Do not drop or recreate a database that contains application data.
+3. Copy `backend/.env.example` to `backend/.env` if a local env file does not already exist. Set `DATABASE_URL` to the connection string for the intended database and set a unique `JWT_ACCESS_SECRET` of at least 32 bytes. Keep the env file and database credentials out of source control and out of the Flutter app.
+4. In PowerShell, initialize the schema and seed missing demo accounts:
+
+   ```powershell
+   Set-Location backend
+   .\.venv\Scripts\Activate.ps1
+   python -m scripts.init_db
+   python -m scripts.seed_demo
+   ```
+
+   If `backend/.venv` does not exist, create it with `python -m venv .venv`, then install `python -m pip install -r requirements.txt`.
+
+Both commands are repeatable. Schema initialization creates missing tables/indexes, applies additive schema changes, and reconciles pre-ledger inventory as opening stock. The seed script adds missing demo admin/owner/shop records; it does not reset existing account passwords. Configure demo identifiers and passwords in `backend/.env` before seeding a new database.
+
+## Run the application
+
+Start the API in one PowerShell window:
+
+```powershell
+Set-Location backend
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-## Get started (backend)
-Requires Python 3.11+ (use the version selected by the team if already standardized).
+Verify `http://127.0.0.1:8000/health` and `http://127.0.0.1:8000/ready`. Readiness must return HTTP 200 with the connected database before using data-backed screens. If the API port is already occupied, identify and stop only the stale pharmacy API process; do not silently change ports or stop an unrelated process.
 
-1. Create and activate a virtual environment in `backend/`.
-2. Install dependencies: `pip install -r requirements.txt`.
-3. Copy the root `.env.example` to `backend/.env` and set `MONGODB_URL` and `MONGODB_DATABASE` if you want to test Atlas connectivity.
-4. From `backend/`, run `uvicorn app.main:app --reload`.
-5. Open `http://127.0.0.1:8000/docs`; check `http://127.0.0.1:8000/health` and `http://127.0.0.1:8000/ready`.
-6. Run `pytest` from `backend/`.
+Start Flutter in another PowerShell window:
 
-The `/health` endpoint only verifies the API process. `/ready` reports whether the configured database can be reached. The API can start without a configured database to allow local scaffold work; database-dependent functionality will not work until Atlas is configured.
+```powershell
+Set-Location frontend
+flutter pub get
+flutter run -d web-server --web-hostname 127.0.0.1 --web-port 5200 --dart-define=API_BASE_URL=http://127.0.0.1:8000
+```
 
-## Team workflow
-- Create one branch per task/module: `feature/<module-short-name>` or `fix/<issue-short-name>`.
-- Open a pull request; explain the change, tests run, API/schema changes, and screenshots when applicable.
-- Do not push directly to `main`; enable branch protection and at least one review in GitHub repository settings.
-- Keep pull requests focused. Avoid editing another module's files without coordinating with that module's owner.
-- Discuss shared API contracts and database changes before implementation. Do not independently change common conventions.
-- Never commit `.env`, access tokens, patient/customer data, database dumps, or real invoices.
+Open `http://127.0.0.1:5200`. The local origin is included in `backend/.env.example` CORS settings. For Android emulators, use `http://10.0.2.2:8000` as `API_BASE_URL`; for other devices, use a reachable backend host and allow the frontend origin in `CORS_ORIGINS`.
 
-## Important docs
-- [Architecture](docs/architecture.md)
-- [Module ownership](docs/team-module-map.md)
-- [API conventions](docs/api-conventions.md)
-- [Data and stock-ledger rules](docs/data-and-stock-rules.md)
-- [Frontend starting notes](frontend/README.md)
+FastAPI endpoints use the `/api` prefix; interactive API docs are at `http://127.0.0.1:8000/docs`.
 
-## Before calling a module complete
-- The feature works from UI through API to database.
-- Validation and permission checks are server-side.
-- Relevant tests pass; failure paths and retries have been tested.
-- Duplicate requests cannot create duplicate financial/stock effects.
-- No secrets or real customer/store data are included in commits.
-- API and setup documentation are updated.
+The welcome screen, sign-in page, and authenticated Settings screen link to the in-app Terms of Use and Privacy Policy. These explain the application’s intended workflows and data handling; the organization operating a deployment must review and adapt them to its actual configuration and applicable requirements.
+
+## Verify changes
+
+```powershell
+Set-Location backend
+python -m pytest -q
+python -m compileall -q app scripts tests
+```
+
+```powershell
+Set-Location frontend
+flutter analyze
+flutter test
+flutter build web --dart-define=API_BASE_URL=http://127.0.0.1:8000
+```
+
+## Data and operational notes
+
+- Inventory quantities are recorded in `stock_movements`; stock adjustments are transactional. Review supplier invoice/OCR suggestions before adding stock.
+- Bill-image OCR requires both the Python packages and the Tesseract executable. OCR only suggests bill lines; it does not alter inventory.
+- Email delivery requires SMTP configuration. Without SMTP, recorded notifications remain available in the app.
+- The API remains available for liveness when PostgreSQL is unavailable, but `/ready` and database-backed operations return an explicit error; they never use a fallback database.
+- Never commit env files, tokens, database dumps, patient/customer data, or real invoices.

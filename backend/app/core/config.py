@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -11,11 +12,10 @@ class Settings(BaseSettings):
     app_env: str = "development"
     api_prefix: str = "/api"
 
-    # Database configuration - PostgreSQL only
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/medishop_dev"
+    DATABASE_URL: str = ""
     cors_origins: str = "*"
 
-    jwt_access_secret: str = "dev_secret"
+    jwt_access_secret: str = "development-only-change-this-secret-before-deploy"
     jwt_access_ttl_seconds: int = 900
     jwt_refresh_ttl_days: int = 7
 
@@ -24,12 +24,10 @@ class Settings(BaseSettings):
     tmp_password_ttl_hours: int = 24
 
     seed_superadmin_identifier: str = "superadmin@medishop.local"
-    seed_superadmin_password: str = "SuperAdmin#2026"
+    seed_superadmin_password: str = ""
     seed_owner_identifier: str = "+919876512345"
-    seed_owner_password: str = "OwnerTemp#8821"
+    seed_owner_password: str = ""
 
-    # Email delivery (SMTP). Credentials, first-login, action-required and
-    # issue updates are only sent when SMTP_HOST and SMTP_FROM_EMAIL are set.
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_username: str = ""
@@ -40,9 +38,22 @@ class Settings(BaseSettings):
     smtp_use_ssl: bool = False
     smtp_timeout_seconds: int = 15
     email_enabled: bool = True
-    # Public base URL used for "open the app" links inside emails.
     app_base_url: str = "http://127.0.0.1:8000"
     support_email: str = ""
+
+    @model_validator(mode="after")
+    def validate_jwt_secret(self) -> "Settings":
+        if len(self.jwt_access_secret.encode("utf-8")) < 32:
+            raise ValueError("JWT_ACCESS_SECRET must be at least 32 bytes.")
+        if self.app_env.strip().lower() in {"prod", "production"} and (
+            self.jwt_access_secret
+            in {
+                "development-only-change-this-secret-before-deploy",
+                "replace-with-a-long-random-secret",
+            }
+        ):
+            raise ValueError("Set a unique JWT_ACCESS_SECRET before production.")
+        return self
 
     model_config = SettingsConfigDict(
         env_file=str(BACKEND_DIR / ".env"),
@@ -53,7 +64,11 @@ class Settings(BaseSettings):
 
     @property
     def parsed_cors_origins(self) -> list[str]:
-        origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        origins = [
+            origin.strip()
+            for origin in self.cors_origins.split(",")
+            if origin.strip()
+        ]
         return origins or ["*"]
 
     @property
@@ -62,19 +77,19 @@ class Settings(BaseSettings):
 
     @property
     def uses_postgresql(self) -> bool:
-        """Check if the app is configured to use PostgreSQL."""
-        return self.DATABASE_URL and self.DATABASE_URL.startswith("postgresql")
+        return self.DATABASE_URL.strip().lower().startswith(
+            ("postgresql://", "postgres://")
+        )
 
     @property
     def smtp_configured(self) -> bool:
-        """True when there is enough SMTP configuration to attempt a send."""
         return bool(self.smtp_host.strip() and self.smtp_from_email.strip())
 
     @property
     def mail_enabled(self) -> bool:
-        """True when emails should actually leave the application."""
         return bool(self.email_enabled and self.smtp_configured)
+
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    return Settings()

@@ -1,6 +1,3 @@
-from fastapi import APIRouter
+from app.api.router import api_router
 
-from app.modules.inventory.router import router as inventory_router
-
-api_router = APIRouter()
-api_router.include_router(inventory_router, tags=["Inventory scaffold"])
+__all__ = ["api_router"]

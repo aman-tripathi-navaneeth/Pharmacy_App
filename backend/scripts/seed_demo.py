@@ -1,146 +1,117 @@
-"""
-Seed demo data for Pharmacy Store Application.
-
-Run with: python -m backend.scripts.seed_demo
-
-This creates the initial demo accounts and shop data needed for the project to function.
-
-Default credentials (as specified in backend/.env.example):
-- Super Admin: superadmin@medishop.local / SuperAdmin#2026
-- Owner: +919876512345 / OwnerTemp#8821
-
-Email delivery mode: "log only" by default.
-Set SMTP_HOST and SMTP_FROM_EMAIL in .env to enable actual email sending.
-"""
-
 import asyncio
-import json
-import uuid
 
 import asyncpg
-from argon2 import PasswordHasher
-from argon2.exceptions import InvalidHashError
 
-_hasher = PasswordHasher(time_cost=2, memory_cost=19456, parallelism=1, hash_len=32, salt_len=16)
-
-
-def hash_password(plain: str) -> str:
-    return _hasher.hash(plain)
+from app.common.identity import is_probably_email, normalize_email, normalize_phone
+from app.common.security import hash_password
+from app.core.config import get_settings
 
 
-async def seed_demo_data():
-    """Seed the database with demo accounts and shop data."""
-    pool = await asyncpg.create_pool(
-        'postgresql://postgres:postgres@localhost:5432/medishop_dev',
-        min_size=1, max_size=5
-    )
-
-    async with pool.acquire() as conn:
-        print("=== Seeding Demo Data ===\n")
-
-        # 1. Seed Super Admin
-        print("1. Seeding Super Admin...")
-        superadmin_email = 'superadmin@medishop.local'
-        superadmin_password = 'SuperAdmin#2026'
-
-        existing = await conn.fetchval(
-            "SELECT id FROM users WHERE email_normalized = $1",
-            superadmin_email
+async def seed_demo_data() -> None:
+    settings = get_settings()
+    if not settings.DATABASE_URL.strip():
+        raise RuntimeError("Set DATABASE_URL in backend/.env before seeding.")
+    if (
+        not settings.seed_superadmin_password.strip()
+        or not settings.seed_owner_password.strip()
+    ):
+        raise RuntimeError(
+            "Set SEED_SUPERADMIN_PASSWORD and SEED_OWNER_PASSWORD "
+            "in backend/.env before seeding."
         )
 
-        if not existing:
-            sha_hash = hash_password(superadmin_password)
-            await conn.execute(
-                """INSERT INTO users
-                   (full_name, role, password_hash, status, must_change_password,
-                    email_normalized, created_at, updated_at)
-                   VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())""",
-                'Super Admin', 'SUPER_ADMIN', sha_hash, 'ACTIVE', False,
-                superadmin_email
-            )
-            print("   OK Super Admin created: superadmin@medishop.local")
-        else:
-            print("   OK Super Admin already exists, skipping.")
+    pool = await asyncpg.create_pool(settings.DATABASE_URL, min_size=1, max_size=2)
+    try:
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                admin_identifier = settings.seed_superadmin_identifier.strip()
+                admin_email = (
+                    normalize_email(admin_identifier)
+                    if is_probably_email(admin_identifier)
+                    else None
+                )
+                admin_phone = (
+                    None
+                    if admin_email
+                    else normalize_phone(admin_identifier)
+                )
+                admin_id = await conn.fetchval(
+                    """SELECT id FROM users
+                       WHERE ($1::text IS NOT NULL AND email_normalized = $1)
+                          OR ($2::text IS NOT NULL AND phone_e164 = $2)
+                       LIMIT 1""",
+                    admin_email,
+                    admin_phone,
+                )
+                if admin_id is None:
+                    admin_id = await conn.fetchval(
+                        """INSERT INTO users
+                           (full_name, role, password_hash, status,
+                            email_normalized, phone_e164)
+                           VALUES ('Super Admin', 'SUPER_ADMIN', $1, 'ACTIVE', $2, $3)
+                           RETURNING id""",
+                        hash_password(settings.seed_superadmin_password),
+                        admin_email,
+                        admin_phone,
+                    )
 
-        # 2. Seed Owner
-        print("\n2. Seeding Owner...")
-        owner_phone = '+919876512345'
-        owner_password = 'OwnerTemp#8821'
+                owner_identifier = settings.seed_owner_identifier.strip()
+                owner_email = (
+                    normalize_email(owner_identifier)
+                    if is_probably_email(owner_identifier)
+                    else None
+                )
+                owner_phone = (
+                    None if owner_email else normalize_phone(owner_identifier)
+                )
+                owner_id = await conn.fetchval(
+                    """SELECT id FROM users
+                       WHERE ($1::text IS NOT NULL AND email_normalized = $1)
+                          OR ($2::text IS NOT NULL AND phone_e164 = $2)
+                       LIMIT 1""",
+                    owner_email,
+                    owner_phone,
+                )
+                if owner_id is None:
+                    owner_id = await conn.fetchval(
+                        """INSERT INTO users
+                           (full_name, role, password_hash, status, must_change_password,
+                            email_normalized, phone_e164)
+                           VALUES ('Demo Owner', 'SHOP_OWNER', $1, 'INVITED', TRUE, $2, $3)
+                           RETURNING id""",
+                        hash_password(settings.seed_owner_password),
+                        owner_email,
+                        owner_phone,
+                    )
 
-        existing = await conn.fetchval(
-            "SELECT id FROM users WHERE phone_e164 = $1",
-            owner_phone
-        )
+                shop_id = await conn.fetchval(
+                    "SELECT id FROM shops WHERE owner_user_id = $1 LIMIT 1",
+                    owner_id,
+                )
+                if shop_id is None:
+                    shop_id = await conn.fetchval(
+                        """INSERT INTO shops
+                           (shop_name, owner_user_id, address, phone_e164, status, created_by)
+                           VALUES (
+                             'MediShop Demo Pharmacy', $1,
+                             '{"city":"Bengaluru","line1":"12 MG Road","state":"Karnataka","postalCode":"560001"}',
+                             $2, 'ACTIVE', $3
+                           )
+                           RETURNING id""",
+                        owner_id,
+                        owner_phone,
+                        admin_id,
+                    )
+                await conn.execute(
+                    "UPDATE users SET owner_store_id = $1 WHERE id = $2",
+                    shop_id,
+                    owner_id,
+                )
+    finally:
+        await pool.close()
 
-        if not existing:
-            sha_hash = hash_password(owner_password)
-            await conn.execute(
-                """INSERT INTO users
-                   (full_name, role, password_hash, status, must_change_password,
-                    phone_e164, created_at, updated_at)
-                   VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())""",
-                'Demo Owner', 'SHOP_OWNER', sha_hash, 'ACTIVE', False,
-                owner_phone
-            )
-            print("   OK Owner created: +919876512345")
-        else:
-            print("   OK Owner already exists, skipping.")
-
-        # 3. Seed Demo Shop
-        print("\n3. Seeding Demo Shop...")
-        shop_name = 'MediShop Demo Pharmacy'
-
-        existing = await conn.fetchval(
-            "SELECT id FROM shops WHERE phone_e164 = $1",
-            owner_phone
-        )
-
-        if not existing:
-            owner_id = await conn.fetchval(
-                "SELECT id FROM users WHERE phone_e164 = $1",
-                owner_phone
-            )
-
-            address = json.dumps({
-                'city': 'Bengaluru',
-                'line1': '12 MG Road',
-                'line2': 'Near City Hospital',
-                'state': 'Karnataka',
-                'country': 'India',
-                'postalCode': '560001'
-            })
-
-            shop_result = await conn.execute(
-                """INSERT INTO shops
-                   (shop_name, address, phone_e164, email_normalized,
-                    licence_details, payment_settings, status, created_by)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)""",
-                shop_name, address, owner_phone, None,
-                None, '{}', 'ACTIVE', owner_id
-            )
-
-            await conn.execute(
-                "UPDATE users SET owner_store_id = $1 WHERE id = $2",
-                (await conn.fetchval("SELECT id FROM shops WHERE phone_e164 = $1")), owner_id
-            )
-
-            print("   OK Shop created: MediShop Demo Pharmacy")
-            print("   OK Owner linked to shop")
-        else:
-            print("   OK Shop already exists, skipping.")
-
-        # 4. Summary
-        print("\n=== Seeding Complete ===\n")
-
-        print("Default Login Credentials:")
-        print("  Super Admin: superadmin@medishop.local / SuperAdmin#2026")
-        print("  Owner:       +919876512345 / OwnerTemp#8821\n")
-
-        print("Notes:")
-        print("  - Owner must change password on first login")
-        print("  - Emails are in 'log only' mode by default")
-        print("  - Set SMTP_HOST/SMTP_FROM_EMAIL in .env to enable actual email sending")
-        print("  - All email attempts stored in email_logs table")
+    print("Demo administrator, owner, and shop are ready.")
+    print("Credentials are configured in backend/.env.")
 
 
 if __name__ == "__main__":

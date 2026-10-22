@@ -1,33 +1,38 @@
 from contextlib import asynccontextmanager
-from typing import Any
+import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pymongo import AsyncMongoClient
 
-from app.api.v1.router import api_router
+from app.api.router import api_router
 from app.core.config import get_settings
-from app.db.mongo import create_mongo_client
+from app.core.errors import install_error_handlers
+from app.db.postgres import close_postgres_pool, create_postgres_pool
 
 settings = get_settings()
+logger = logging.getLogger("pharmacy.api")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.mongo_client = None
-    app.state.db = None
-    if settings.mongodb_url.strip():
-        client: AsyncMongoClient[dict[str, Any]] = create_mongo_client(settings.mongodb_url)
-        app.state.mongo_client = client
-        app.state.db = client[settings.mongodb_database]
+    app.state.pg_pool = None
+    if settings.DATABASE_URL.strip():
+        try:
+            app.state.pg_pool = await create_postgres_pool()
+        except Exception:
+            logger.exception("Could not connect to PostgreSQL")
+    else:
+        logger.error(
+            "DATABASE_URL is not configured; database routes will return 503"
+        )
     try:
         yield
     finally:
-        if app.state.mongo_client is not None:
-            await app.state.mongo_client.close()
+        await close_postgres_pool()
 
 
 app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
+install_error_handlers(app)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.parsed_cors_origins,
@@ -44,12 +49,33 @@ async def health() -> dict[str, str]:
 
 @app.get("/ready", tags=["System"])
 async def ready() -> dict[str, str]:
-    if app.state.db is None:
-        from fastapi import HTTPException
+    pool = getattr(app.state, "pg_pool", None)
+    if pool is None:
+        code = (
+            "DATABASE_NOT_CONFIGURED"
+            if not settings.DATABASE_URL.strip()
+            else "DATABASE_UNAVAILABLE"
+        )
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": code,
+                "message": "PostgreSQL is not connected. Configure DATABASE_URL and start PostgreSQL.",
+            },
+        )
+    try:
+        async with pool.acquire() as connection:
+            await connection.fetchval("SELECT 1")
+    except Exception as error:
+        logger.exception("PostgreSQL readiness check failed")
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "DATABASE_UNAVAILABLE",
+                "message": "PostgreSQL readiness check failed.",
+            },
+        ) from error
+    return {"status": "ready", "database": settings.DATABASE_URL.rsplit("/", 1)[-1]}
 
-        raise HTTPException(status_code=503, detail={"code": "DATABASE_NOT_CONFIGURED", "message": "Set MONGODB_URL to enable database access"})
-    await app.state.mongo_client.admin.command("ping")
-    return {"status": "ready", "database": settings.mongodb_database}
 
-
-app.include_router(api_router, prefix=settings.api_v1_prefix)
+app.include_router(api_router, prefix=settings.api_prefix)

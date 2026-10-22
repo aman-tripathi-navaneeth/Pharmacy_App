@@ -276,3 +276,24 @@ CREATE TABLE IF NOT EXISTS purchase_order_items (
 ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS client_ref TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS stock_movements_client_ref_idx
     ON stock_movements (store_id, client_ref) WHERE client_ref IS NOT NULL;
+
+-- Existing inventory predates the stock ledger; record its current quantity once
+-- as the opening balance so movement history reconciles with on-hand stock.
+INSERT INTO stock_movements
+    (store_id, item_id, movement_type, quantity, reason, created_by, client_ref, created_at)
+SELECT
+    item.store_id,
+    item.id,
+    'IN',
+    item.quantity,
+    'Opening stock baseline reconciled from existing inventory',
+    item.created_by,
+    'opening-stock:' || item.id::text,
+    item.created_at
+FROM inventory_items AS item
+WHERE item.quantity > 0
+  AND NOT EXISTS (
+      SELECT 1
+      FROM stock_movements AS movement
+      WHERE movement.item_id = item.id
+  );
