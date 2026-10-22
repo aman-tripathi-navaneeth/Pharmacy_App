@@ -7,8 +7,7 @@ class Settings(BaseSettings):
     app_name: str = "Pharmacy Store Application API"
     app_env: str = "development"
     api_v1_prefix: str = "/api/v1"
-    mongodb_url: str = ""
-    mongodb_database: str = "pharmacy_store_dev"
+    database_url: str = ""
     cors_origins: str = "http://localhost:3000,http://localhost:5173,http://localhost:8081"
 
     model_config = SettingsConfigDict(
