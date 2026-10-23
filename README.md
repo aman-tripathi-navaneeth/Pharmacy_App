@@ -7,7 +7,7 @@ Shared starter repository for the 12-module Pharmacy Store Application. It estab
 - The Inventory, Batches & Stock Ledger is the source of truth for stock. All stock changes must be recorded through controlled ledger movements.
 - Purchase-invoice OCR and end-of-day sales-report OCR create **drafts**. Stock changes only after a user reviews and confirms the document.
 - Duplicate report submissions/retries must not apply the same movement twice.
-- Do not put MongoDB credentials in frontend/mobile code. Only the backend connects to Atlas.
+- Do not put Postgres credentials in frontend/mobile code. Only the backend connects to the database.
 - Never silently delete posted stock movements; use a reversal or adjustment with an audit trail.
 
 ## Repository layout
@@ -22,13 +22,13 @@ docs/           Architecture, API conventions, module ownership and data rules
 Requires Python 3.11+ (use the version selected by the team if already standardized).
 
 1. Create and activate a virtual environment in `backend/`.
-2. Install dependencies: `pip install -r requirements.txt`.
-3. Copy the root `.env.example` to `backend/.env` and set `MONGODB_URL` and `MONGODB_DATABASE` if you want to test Atlas connectivity.
-4. From `backend/`, run `uvicorn app.main:app --reload`.
-5. Open `http://127.0.0.1:8000/docs`; check `http://127.0.0.1:8000/health` and `http://127.0.0.1:8000/ready`.
-6. Run `pytest` from `backend/`.
+2. Install dependencies: `pip install -r requirements.txt`.3. Copy the root `.env.example` to `backend/.env` and set `POSTGRES_URL` if you want database connectivity.
+4. From `backend/`, create the schema with `alembic upgrade head` (Alembic migrations live in `backend/alembic/`).
+5. From `backend/`, run `uvicorn app.main:app --reload`.
+6. Open `http://127.0.0.1:8000/docs`; check `http://127.0.0.1:8000/health` and `http://127.0.0.1:8000/ready`.
+7. Run `pytest` from `backend/`.
 
-The `/health` endpoint only verifies the API process. `/ready` reports whether the configured database can be reached. The API can start without a configured database to allow local scaffold work; database-dependent functionality will not work until Atlas is configured.
+The `/health` endpoint only verifies the API process. `/ready` reports whether the configured database can be reached. The API can start without a configured database to allow local scaffold work; database-dependent functionality will not work until Postgres is configured (and the Alembic migrations applied).
 
 ## Team workflow
 - Create one branch per task/module: `feature/<module-short-name>` or `fix/<issue-short-name>`.

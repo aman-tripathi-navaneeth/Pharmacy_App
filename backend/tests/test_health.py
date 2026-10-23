@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.main import app, settings
 
 
 def test_health_endpoint() -> None:
@@ -10,7 +10,11 @@ def test_health_endpoint() -> None:
     assert response.json() == {"status": "ok"}
 
 
-def test_ready_without_database_configuration() -> None:
+def test_ready_without_database_configuration(monkeypatch) -> None:
+    # Pin the setting to empty so this test passes no matter what POSTGRES_URL the
+    # developer has in backend/.env. It tests the unconfigured-database behavior,
+    # not the local environment.
+    monkeypatch.setattr(settings, "postgres_url", "")
     with TestClient(app) as client:
         response = client.get("/ready")
     assert response.status_code == 503

@@ -1,6 +1,8 @@
 # Data and stock rules
 
-## Suggested collections
+## Suggested tables
+Names below are conceptual; each becomes a real table in an Alembic migration owned
+by the responsible module (see docs/architecture.md for module data boundaries).
 - `stores`, `users`, `memberships`: store identity and access relationships (coordinate with authentication module).
 - `products`: catalogue-level medicine identity and base-unit definitions.
 - `batches`: product/store-specific batch or lot, expiry, purchase cost where permitted, and batch quantity metadata.

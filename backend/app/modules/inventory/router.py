@@ -11,5 +11,5 @@ async def inventory_connectivity(request: Request) -> dict[str, str]:
     are implemented and protected by store-level authentication/authorization.
     """
     if getattr(request.app.state, "db", None) is None:
-        raise HTTPException(status_code=503, detail={"code": "DATABASE_NOT_CONFIGURED", "message": "MongoDB is not configured"})
+        raise HTTPException(status_code=503, detail={"code": "DATABASE_NOT_CONFIGURED", "message": "Postgres is not configured"})
     return {"status": "route-ready", "note": "No inventory operation was performed"}
