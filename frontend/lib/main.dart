@@ -1,42 +1,57 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-void main() {
-  runApp(const PharmacyApp());
-}
+import 'core/api_client.dart';
+import 'data/expiry_repository.dart';
+import 'data/low_stock_repository.dart';
+import 'data/reconciliation_repository.dart';
+import 'screens/expiry_dashboard_screen.dart';
+import 'screens/low_stock_screen.dart';
+import 'screens/reconciliation_screen.dart';
+
+void main() => runApp(const PharmacyApp());
 
 class PharmacyApp extends StatelessWidget {
   const PharmacyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Pharmacy Store',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0F766E), // Teal pharmacy theme
-          primary: const Color(0xFF0F766E),
-          surface: const Color(0xFFF8FAFC),
+    return MultiProvider(
+      providers: [
+        Provider<ExpiryRepository>(
+          create: (_) => ExpiryRepository(ApiClient()),
         ),
-        scaffoldBackgroundColor: const Color(0xFFF1F5F9),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF0F766E),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: true,
+        Provider<LowStockRepository>(
+          create: (_) => LowStockRepository(ApiClient()),
         ),
-      ),
-      home: const MobileViewWrapper(
-        child: BlankHomePage(),
+        Provider<ReconciliationRepository>(
+          create: (_) => ReconciliationRepository(ApiClient()),
+        ),
+      ],
+      child: MaterialApp(
+        title: 'Pharmacy Store',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF0F766E),
+            primary: const Color(0xFF0F766E),
+            surface: const Color(0xFFF8FAFC),
+          ),
+          scaffoldBackgroundColor: const Color(0xFFF1F5F9),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Color(0xFF0F766E),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            centerTitle: true,
+          ),
+        ),
+        home: const MobileViewWrapper(child: PharmacyHome()),
       ),
     );
   }
 }
 
-/// Wraps the content in a centered mobile viewport when running on Web or Desktop,
-/// and renders full-screen on native mobile devices.
 class MobileViewWrapper extends StatelessWidget {
   final Widget child;
 
@@ -46,20 +61,21 @@ class MobileViewWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // If screen width is wider than a phone (e.g., Web/Desktop), display in mobile frame
         if (constraints.maxWidth > 500) {
           return Scaffold(
             backgroundColor: const Color(0xFFE2E8F0),
             body: Center(
               child: Container(
                 width: 420,
-                height: constraints.maxHeight > 880 ? 840 : constraints.maxHeight * 0.96,
+                height: constraints.maxHeight > 880
+                    ? 840
+                    : constraints.maxHeight * 0.96,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(28),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.12),
+                      color: Colors.black.withValues(alpha: 0.12),
                       blurRadius: 24,
                       offset: const Offset(0, 8),
                     ),
@@ -75,15 +91,64 @@ class MobileViewWrapper extends StatelessWidget {
             ),
           );
         }
-
-        // Native mobile view: fill device screen
         return child;
       },
     );
   }
 }
 
-/// Minimal starter blank page ready for team module development.
+class PharmacyHome extends StatefulWidget {
+  const PharmacyHome({super.key});
+
+  @override
+  State<PharmacyHome> createState() => _PharmacyHomeState();
+}
+
+class _PharmacyHomeState extends State<PharmacyHome> {
+  int _index = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final pages = [
+      const BlankHomePage(),
+      const ExpiryDashboardScreen(),
+      const LowStockScreen(),
+      const ReconciliationScreen(),
+      const SettingsPage(),
+    ];
+
+    return Scaffold(
+      body: IndexedStack(index: _index, children: pages),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (value) => setState(() => _index = value),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.event_busy_outlined),
+            label: 'Expiry',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.inventory_2_outlined),
+            label: 'Low Stock',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.fact_check_outlined),
+            label: 'Reconcile',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            label: 'Settings',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class BlankHomePage extends StatelessWidget {
   const BlankHomePage({super.key});
 
@@ -99,7 +164,7 @@ class BlankHomePage extends StatelessWidget {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             Text(
-              'మెడికల్ స్టోర్ • Mobile View',
+              'Mobile View',
               style: TextStyle(fontSize: 11, color: Colors.white70),
             ),
           ],
@@ -108,7 +173,7 @@ class BlankHomePage extends StatelessWidget {
       body: SafeArea(
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -127,63 +192,41 @@ class BlankHomePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Pharmacy App Ready',
+                  'Pharmacy App',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF0F172A),
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 const Text(
-                  'మొబైల్ స్క్రీన్ సిద్ధంగా ఉంది',
+                  'Manage expiry, low stock, and inventory reconciliation from the navigation bar.',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13,
                     color: Color(0xFF64748B),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: const Column(
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.check_circle_outline, color: Color(0xFF0F766E), size: 20),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Blank Mobile Canvas',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1E293B),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Team members can now plug in module screens and connect to /api/v1 backend endpoints.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF64748B),
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
+                    height: 1.4,
                   ),
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class SettingsPage extends StatelessWidget {
+  const SettingsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Settings')),
+      body: const Center(
+        child: Text('Settings – not implemented yet'),
       ),
     );
   }
