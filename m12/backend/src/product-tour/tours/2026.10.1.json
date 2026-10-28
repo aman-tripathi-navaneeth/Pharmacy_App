@@ -1,0 +1,23 @@
+{
+  "version": "2026.10.1",
+  "steps": [
+    { "id": "welcome", "type": "info", "icon": "storefront", "titleKey": "tour.welcome.title", "bodyKey": "tour.welcome.body" },
+    { "id": "dashboard", "type": "info", "icon": "dashboard", "titleKey": "tour.dashboard.title", "bodyKey": "tour.dashboard.body" },
+    { "id": "offline", "type": "info", "icon": "cloud_off", "titleKey": "tour.offline.title", "bodyKey": "tour.offline.body" },
+    { "id": "help", "type": "info", "icon": "support", "titleKey": "tour.help.title", "bodyKey": "tour.help.body" },
+    {
+      "id": "syncStatus",
+      "type": "syncStates",
+      "icon": "sync",
+      "titleKey": "tour.sync.title",
+      "items": [
+        { "labelKey": "tour.sync.pending", "descriptionKey": "tour.sync.pendingDesc", "tone": "neutral" },
+        { "labelKey": "tour.sync.syncing", "descriptionKey": "tour.sync.syncingDesc", "tone": "info" },
+        { "labelKey": "tour.sync.synced", "descriptionKey": "tour.sync.syncedDesc", "tone": "success" },
+        { "labelKey": "tour.sync.conflict", "descriptionKey": "tour.sync.conflictDesc", "tone": "warning" },
+        { "labelKey": "tour.sync.failed", "descriptionKey": "tour.sync.failedDesc", "tone": "error" }
+      ]
+    },
+    { "id": "finish", "type": "finish", "icon": "check", "titleKey": "tour.finish.title", "bodyKey": "tour.finish.body" }
+  ]
+}
