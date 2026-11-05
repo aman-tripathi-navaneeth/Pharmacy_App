@@ -17,9 +17,12 @@ warnings.filterwarnings("ignore", message=".*Using `httpx` with `starlette.testc
 def isolate_unit_tests_database(monkeypatch: pytest.MonkeyPatch):
     """Isolate baseline unit tests by defaulting database_url to empty string."""
     original_db_url = settings.database_url
+    original_db_url_upper = settings.DATABASE_URL
     monkeypatch.setattr(settings, "database_url", "")
+    monkeypatch.setattr(settings, "DATABASE_URL", "")
     yield
     settings.database_url = original_db_url
+    settings.DATABASE_URL = original_db_url_upper
 
 
 @pytest.fixture(scope="module")

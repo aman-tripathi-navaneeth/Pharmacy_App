@@ -1,5 +1,6 @@
 import logging
 import uuid
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -47,7 +48,9 @@ def error_response(
     code: str,
     message: str,
     field_errors: dict[str, str] | None = None,
+    detail: Any = None,
 ) -> JSONResponse:
+    resolved_detail = detail if detail is not None else {"code": code, "message": message}
     return JSONResponse(
         status_code=status_code,
         content={
@@ -56,6 +59,7 @@ def error_response(
             "message": message,
             "fieldErrors": field_errors,
             "requestId": str(uuid.uuid4()),
+            "detail": resolved_detail,
         },
     )
 
@@ -82,9 +86,15 @@ def install_error_handlers(app: FastAPI) -> None:
                 exc.status_code,
                 str(detail.get("code")),
                 str(detail.get("message", "Request failed")),
+                detail=detail,
             )
         message = detail if isinstance(detail, str) else "Request failed"
-        return error_response(exc.status_code, default_code(exc.status_code), message)
+        return error_response(
+            exc.status_code,
+            default_code(exc.status_code),
+            message,
+            detail=detail,
+        )
 
     @app.exception_handler(Exception)
     async def _unhandled(_request: Request, exc: Exception) -> JSONResponse:

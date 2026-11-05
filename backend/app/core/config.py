@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
 
     DATABASE_URL: str = ""
+    database_url: str = ""
     cors_origins: str = "*"
 
     jwt_access_secret: str = "development-only-change-this-secret-before-deploy"
@@ -43,19 +44,19 @@ class Settings(BaseSettings):
     support_email: str = ""
 
     @property
-    def database_url(self) -> str:
-        return self.DATABASE_URL
+    def effective_database_url(self) -> str:
+        return self.database_url or self.DATABASE_URL
 
     @property
     def asyncpg_url(self) -> str:
-        url = self.DATABASE_URL.strip()
+        url = self.effective_database_url.strip()
         if url.startswith("postgresql+asyncpg://"):
             return "postgresql://" + url[len("postgresql+asyncpg://"):]
         return url
 
     @property
     def sqlalchemy_database_url(self) -> str:
-        url = self.DATABASE_URL.strip()
+        url = self.effective_database_url.strip()
         if url.startswith("postgresql://"):
             return "postgresql+asyncpg://" + url[len("postgresql://"):]
         if url.startswith("postgres://"):
@@ -63,7 +64,12 @@ class Settings(BaseSettings):
         return url
 
     @model_validator(mode="after")
-    def validate_jwt_secret(self) -> "Settings":
+    def validate_jwt_secret_and_sync_db(self) -> "Settings":
+        if not self.database_url and self.DATABASE_URL:
+            self.database_url = self.DATABASE_URL
+        elif not self.DATABASE_URL and self.database_url:
+            self.DATABASE_URL = self.database_url
+
         if len(self.jwt_access_secret.encode("utf-8")) < 32:
             raise ValueError("JWT_ACCESS_SECRET must be at least 32 bytes.")
         if self.app_env.strip().lower() in {"prod", "production"} and (
@@ -98,7 +104,7 @@ class Settings(BaseSettings):
 
     @property
     def uses_postgresql(self) -> bool:
-        return self.DATABASE_URL.strip().lower().startswith(
+        return self.effective_database_url.strip().lower().startswith(
             ("postgresql://", "postgres://", "postgresql+asyncpg://")
         )
 
