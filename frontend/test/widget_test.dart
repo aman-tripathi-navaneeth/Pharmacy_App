@@ -5,6 +5,20 @@ import 'package:pharmacy_app/screens/legal_information_screen.dart';
 import 'package:pharmacy_app/screens/login_screen.dart';
 
 void main() {
+  testWidgets('Pharmacy app displays home screen and navigation',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(const PharmacyApp(home: PharmacyHome()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pharmacy Store'), findsWidgets);
+    expect(find.text('Pharmacy App'), findsOneWidget);
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Expiry'), findsOneWidget);
+    expect(find.text('Low Stock'), findsOneWidget);
+    expect(find.text('Reconcile'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
+  });
+
   testWidgets('M1 welcome screen opens sign in', (WidgetTester tester) async {
     await tester.pumpWidget(const PharmacyApp());
     await tester.pumpAndSettle();

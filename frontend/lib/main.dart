@@ -1,20 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'api_session.dart';
+import 'core/api_client.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/module_drawer.dart';
+import 'data/expiry_repository.dart';
+import 'data/low_stock_repository.dart';
+import 'data/reconciliation_repository.dart';
 import 'modules/inventory_batches_stock_ledger/screens/inventory_dashboard_screen.dart';
 import 'modules/inventory_batches_stock_ledger/services/inventory_service.dart';
 import 'screens/account_setup_screen.dart';
 import 'screens/create_shop_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/email_history_screen.dart';
+import 'screens/expiry_dashboard_screen.dart';
 import 'screens/issues_screen.dart';
 import 'screens/legal_information_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/low_stock_screen.dart';
 import 'screens/new_bill_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/prescriptions_screen.dart';
+import 'screens/reconciliation_screen.dart';
 import 'screens/sales_report_screen.dart';
 import 'screens/scan_inventory_screen.dart';
 import 'screens/settings_screen.dart';
@@ -33,78 +41,95 @@ class PharmacyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Pharmacy Store',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0F766E),
-          primary: const Color(0xFF0F766E),
-          surface: const Color(0xFFF8FAFC),
+    return MultiProvider(
+      providers: [
+        Provider<ExpiryRepository>(
+          create: (_) => ExpiryRepository(ApiClient()),
         ),
-        scaffoldBackgroundColor: const Color(0xFFF1F5F9),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF0F766E),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: true,
+        Provider<LowStockRepository>(
+          create: (_) => LowStockRepository(ApiClient()),
         ),
+        Provider<ReconciliationRepository>(
+          create: (_) => ReconciliationRepository(ApiClient()),
+        ),
+      ],
+      child: MaterialApp(
+        title: 'Pharmacy Store',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF0F766E),
+            primary: const Color(0xFF0F766E),
+            surface: const Color(0xFFF8FAFC),
+          ),
+          scaffoldBackgroundColor: const Color(0xFFF1F5F9),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Color(0xFF0F766E),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            centerTitle: true,
+          ),
+        ),
+        darkTheme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF0F766E),
+            primary: const Color(0xFF0F766E),
+            surface: const Color(0xFF112D22),
+          ),
+          scaffoldBackgroundColor: const Color(0xFF0F172A),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Color(0xFF0F766E),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            centerTitle: true,
+          ),
+        ),
+        builder: (context, child) =>
+            MobileViewWrapper(child: child ?? const SizedBox.shrink()),
+        home: home ?? const WelcomeScreen(),
+        routes: {
+          '/login': (_) => const LoginScreen(),
+          '/terms': (_) =>
+              const LegalInformationScreen(document: LegalDocument.terms),
+          '/privacy': (_) =>
+              const LegalInformationScreen(document: LegalDocument.privacy),
+          '/account-setup': (_) => const AccountSetupScreen(),
+          '/dashboard': (_) => DashboardScreen(
+            userRole: ApiSession.user['role']?.toString() ?? '',
+            userName: ApiSession.user['fullName']?.toString() ?? 'Account',
+          ),
+          '/shop': (_) => ShopScreen(
+            userRole: ApiSession.user['role']?.toString() ?? '',
+            shopId: ApiSession.user['ownerStoreId']?.toString(),
+          ),
+          '/shops': (_) => const ShopListScreen(),
+          '/scan': (_) => ScanInventoryScreen(
+            userRole: ApiSession.user['role']?.toString() ?? '',
+            storeId: ApiSession.user['ownerStoreId']?.toString(),
+          ),
+          '/notifications': (_) => const NotificationsScreen(),
+          '/settings': (context) => SettingsScreen(
+            passwordUpdated: ModalRoute.of(context)?.settings.arguments == true,
+          ),
+          '/new-bill': (_) => const NewBillScreen(),
+          '/sales-report': (_) => const SalesReportScreen(),
+          '/create-shop': (_) => const CreateShopScreen(),
+          '/email-history': (_) => const EmailHistoryScreen(),
+          '/admin-issues': (_) => const AdminIssuesScreen(),
+          '/issues': (_) => const IssuesScreen(),
+          '/prescriptions': (_) => PrescriptionsScreen(
+            userRole: ApiSession.user['role']?.toString() ?? '',
+            shopId: ApiSession.user['ownerStoreId']?.toString(),
+          ),
+          '/inventory': (_) => const Module5InventoryScreen(),
+          '/m6': (_) => const PharmacyHome(),
+          '/expiry': (_) => const ExpiryDashboardScreen(),
+          '/low-stock': (_) => const LowStockScreen(),
+          '/reconcile': (_) => const ReconciliationScreen(),
+        },
       ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0F766E),
-          primary: const Color(0xFF0F766E),
-          surface: const Color(0xFF112D22),
-        ),
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF0F766E),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: true,
-        ),
-      ),
-      builder: (context, child) =>
-          MobileViewWrapper(child: child ?? const SizedBox.shrink()),
-      home: home ?? const WelcomeScreen(),
-      routes: {
-        '/login': (_) => const LoginScreen(),
-        '/terms': (_) =>
-            const LegalInformationScreen(document: LegalDocument.terms),
-        '/privacy': (_) =>
-            const LegalInformationScreen(document: LegalDocument.privacy),
-        '/account-setup': (_) => const AccountSetupScreen(),
-        '/dashboard': (_) => DashboardScreen(
-          userRole: ApiSession.user['role']?.toString() ?? '',
-          userName: ApiSession.user['fullName']?.toString() ?? 'Account',
-        ),
-        '/shop': (_) => ShopScreen(
-          userRole: ApiSession.user['role']?.toString() ?? '',
-          shopId: ApiSession.user['ownerStoreId']?.toString(),
-        ),
-        '/shops': (_) => const ShopListScreen(),
-        '/scan': (_) => ScanInventoryScreen(
-          userRole: ApiSession.user['role']?.toString() ?? '',
-          storeId: ApiSession.user['ownerStoreId']?.toString(),
-        ),
-        '/notifications': (_) => const NotificationsScreen(),
-        '/settings': (context) => SettingsScreen(
-          passwordUpdated: ModalRoute.of(context)?.settings.arguments == true,
-        ),
-        '/new-bill': (_) => const NewBillScreen(),
-        '/sales-report': (_) => const SalesReportScreen(),
-        '/create-shop': (_) => const CreateShopScreen(),
-        '/email-history': (_) => const EmailHistoryScreen(),
-        '/admin-issues': (_) => const AdminIssuesScreen(),
-        '/issues': (_) => const IssuesScreen(),
-        '/prescriptions': (_) => PrescriptionsScreen(
-          userRole: ApiSession.user['role']?.toString() ?? '',
-          shopId: ApiSession.user['ownerStoreId']?.toString(),
-        ),
-        '/inventory': (_) => const Module5InventoryScreen(),
-      },
     );
   }
 }
@@ -140,6 +165,141 @@ class _Module5InventoryScreenState extends State<Module5InventoryScreen> {
       body: InventoryDashboardScreen(
         service: _inventoryService,
         onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
+      ),
+    );
+  }
+}
+
+class PharmacyHome extends StatefulWidget {
+  const PharmacyHome({super.key});
+
+  @override
+  State<PharmacyHome> createState() => _PharmacyHomeState();
+}
+
+class _PharmacyHomeState extends State<PharmacyHome> {
+  int _index = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final pages = [
+      const BlankHomePage(),
+      const ExpiryDashboardScreen(),
+      const LowStockScreen(),
+      const ReconciliationScreen(),
+      const SettingsPage(),
+    ];
+
+    return Scaffold(
+      body: IndexedStack(index: _index, children: pages),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (value) => setState(() => _index = value),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.event_busy_outlined),
+            label: 'Expiry',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.inventory_2_outlined),
+            label: 'Low Stock',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.fact_check_outlined),
+            label: 'Reconcile',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            label: 'Settings',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class BlankHomePage extends StatelessWidget {
+  const BlankHomePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        title: const Column(
+          children: [
+            Text(
+              'Pharmacy Store',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              'Mobile View',
+              style: TextStyle(fontSize: 11, color: Colors.white70),
+            ),
+          ],
+        ),
+      ),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCCFBF1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(
+                    Icons.local_pharmacy_rounded,
+                    size: 40,
+                    color: Color(0xFF0F766E),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Pharmacy App',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Manage expiry, low stock, and inventory reconciliation from the navigation bar.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF64748B),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class SettingsPage extends StatelessWidget {
+  const SettingsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Settings')),
+      body: const Center(
+        child: Text('Settings – not implemented yet'),
       ),
     );
   }

@@ -6,6 +6,9 @@ from app.modules.auth.router import router as auth_router
 from app.modules.bills.router import router as bills_router
 from app.modules.customers.router import router as customers_router
 from app.modules.email.router import router as email_router
+from app.modules.expiry_low_stock_reconciliation.router import (
+    router as expiry_low_stock_reconciliation_router,
+)
 from app.modules.inventory.router import router as inventory_router
 from app.modules.inventory_batches_stock_ledger.router import (
     router as inventory_batches_stock_ledger_router,
@@ -33,6 +36,10 @@ api_router.include_router(notifications_router)
 api_router.include_router(audit_router)
 api_router.include_router(inventory_router)
 api_router.include_router(inventory_batches_stock_ledger_router, tags=["Inventory, Batches & Stock Ledger"])
+api_router.include_router(
+    expiry_low_stock_reconciliation_router,
+    tags=["Expiry, Low Stock & Reconciliation"],
+)
 api_router.include_router(plans_router)
 api_router.include_router(issues_router)
 api_router.include_router(customers_router)
