@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.main import app, settings
 
 
 def test_health_endpoint() -> None:
@@ -10,8 +10,9 @@ def test_health_endpoint() -> None:
     assert response.json() == {"status": "ok"}
 
 
-def test_ready_without_database_configuration() -> None:
+def test_ready_without_database_configuration(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "DATABASE_URL", "")
     with TestClient(app) as client:
         response = client.get("/ready")
     assert response.status_code == 503
-    assert response.json()["detail"]["code"] == "DATABASE_NOT_CONFIGURED"
+    assert response.json()["code"] == "DATABASE_NOT_CONFIGURED"
