@@ -1,5 +1,4 @@
-// Tests for the Today screen wired to the dashboard API.
-// Uses MockClient so no live backend is required to run these.
+// Tests for the Today screen, M1 welcome/legal screens, M5 inventory, and M6 navigation.
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -11,6 +10,9 @@ import 'package:http/testing.dart' as http_testing;
 import 'package:pharmacy_app/data/api_client.dart';
 import 'package:pharmacy_app/features/dashboard/screens/purchases_screen.dart';
 import 'package:pharmacy_app/features/dashboard/screens/today_screen.dart';
+import 'package:pharmacy_app/main.dart';
+import 'package:pharmacy_app/screens/legal_information_screen.dart';
+import 'package:pharmacy_app/screens/login_screen.dart';
 
 const String sampleTodayJson = '''
 {
@@ -72,7 +74,6 @@ void main() {
   testWidgets(
     'shows ranked tasks, counts and partial-failure banner from the API',
     (WidgetTester tester) async {
-      // Tall viewport so the full screen (incl. category chips) builds.
       tester.view.physicalSize = const Size(800, 1400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -84,22 +85,17 @@ void main() {
         find.text('Out of stock. Sold 14 strips last week.'),
         findsOneWidget,
       );
-      // Reason renders as its own chip (no "reason:" prefix in the design).
       expect(find.text('Out of stock'), findsOneWidget);
-      // Urgency bar segments read "<n> <label>".
       expect(find.text('4 Urgent'), findsOneWidget);
       expect(find.text('5 Soon'), findsOneWidget);
       expect(find.text('4 Routine'), findsOneWidget);
-      // Partial failure: credit source is not ok in the sample.
       expect(
         find.textContaining('credit could not load'),
         findsNothing,
-      ); // credit label = "Credit"
+      );
       expect(find.textContaining('Credit could not load'), findsOneWidget);
-      // Money rendering with Indian grouping: glance values.
       expect(find.text('₹8,420'), findsOneWidget);
       expect(find.text('₹23,760'), findsOneWidget);
-      // The "All" chip shows the total of urgency counts (4+5+4), not items length.
       expect(find.text('All 13'), findsOneWidget);
       expect(find.text('Low stock 1'), findsOneWidget);
     },
@@ -276,7 +272,6 @@ void main() {
   testWidgets('urgency buttons filter tasks to the matching urgency', (
     WidgetTester tester,
   ) async {
-    // Two tasks of different urgencies; only the matching one may survive a tap.
     final http.Client multiClient = http_testing.MockClient((
       http.Request request,
     ) async {
@@ -342,27 +337,22 @@ void main() {
     expect(find.text('Telma 40 out of stock'), findsOneWidget);
     expect(find.text('Refill due for Lakshmi'), findsOneWidget);
 
-    // The button label is 'Urgent' but the task value is 'urgent': the filter
-    // must still match.
     await tester.tap(find.text('1 Urgent'));
     await tester.pumpAndSettle();
     expect(find.text('Telma 40 out of stock'), findsOneWidget);
     expect(find.text('Refill due for Lakshmi'), findsNothing);
 
-    // 'Soon' must show only the soon task.
     await tester.tap(find.text('1 Soon'));
     await tester.pumpAndSettle();
     expect(find.text('Telma 40 out of stock'), findsNothing);
     expect(find.text('Refill due for Lakshmi'), findsOneWidget);
 
-    // Routine is empty here, so the honest no-tasks-in-filter note shows.
     await tester.tap(find.text('0 Routine'));
     await tester.pumpAndSettle();
     expect(find.text('Telma 40 out of stock'), findsNothing);
     expect(find.text('Refill due for Lakshmi'), findsNothing);
     expect(find.text('No tasks in this filter.'), findsOneWidget);
 
-    // Tapping again clears the filter and both tasks return.
     await tester.tap(find.text('0 Routine'));
     await tester.pumpAndSettle();
     expect(find.text('Telma 40 out of stock'), findsOneWidget);
@@ -402,5 +392,125 @@ void main() {
 
     expect(find.text('All clear for today'), findsOneWidget);
     expect(find.text('Try again'), findsNothing);
+  });
+
+  testWidgets('Pharmacy app displays home screen and navigation',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(const PharmacyApp(home: PharmacyHome()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pharmacy Store'), findsWidgets);
+    expect(find.text('Pharmacy App'), findsOneWidget);
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Expiry'), findsOneWidget);
+    expect(find.text('Low Stock'), findsOneWidget);
+    expect(find.text('Reconcile'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
+  });
+
+  testWidgets('M1 welcome screen opens sign in', (WidgetTester tester) async {
+    await tester.pumpWidget(const PharmacyApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('MediManage'), findsOneWidget);
+    expect(find.text('Your pharmacy, in one place'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Get Started'));
+    await tester.tap(find.text('Get Started'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LoginScreen), findsOneWidget);
+  });
+
+  testWidgets('welcome screen opens both legal documents', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const PharmacyApp());
+
+    await tester.ensureVisible(find.text('Terms of Use'));
+    await tester.tap(find.text('Terms of Use'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is LegalInformationScreen &&
+            widget.document == LegalDocument.terms,
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Rules for using MediManage'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Records and regulated work'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Records and regulated work'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Privacy Policy'));
+    await tester.tap(find.text('Privacy Policy'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is LegalInformationScreen &&
+            widget.document == LegalDocument.privacy,
+      ),
+      findsOneWidget,
+    );
+    await tester.scrollUntilVisible(
+      find.text('Business, customer, and prescription records'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(
+      find.text('Business, customer, and prescription records'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('privacy policy remains usable on a narrow viewport', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: LegalInformationScreen(document: LegalDocument.privacy),
+      ),
+    );
+
+    expect(find.text('Privacy Policy'), findsOneWidget);
+    expect(find.text('Information the application handles'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Business, customer, and prescription records'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(
+      find.text('Business, customer, and prescription records'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Pharmacy app modular view & Module 5 inventory smoke test', (WidgetTester tester) async {
+    await tester.pumpWidget(const PharmacyApp(home: Module5InventoryScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pharmacy Store'), findsWidgets);
+    expect(find.text('• Module 5'), findsOneWidget);
+
+    expect(find.text('Balances'), findsOneWidget);
+    expect(find.text('Batches (FEFO)'), findsOneWidget);
+    expect(find.text('Ledger'), findsOneWidget);
+
+    expect(find.text('In-Stock Units'), findsOneWidget);
+    expect(find.text('Active Batches'), findsOneWidget);
   });
 }

@@ -1,3 +1,3 @@
 # Module packages
 
-Each module has its own folder, README, and `router.py`. The starter intentionally registers only the inventory scaffold router in `app/api/v1/router.py`. Coordinate module router registration so concurrent branches do not overwrite the shared router file. Add authentication and store-level authorization before exposing real store data.
+Each module has its own router and service. The active API router in `app/api/router.py` registers the module routes under the `/api` prefix. Require authentication and enforce store-level authorization before exposing shop data. PostgreSQL is the only database; use `backend/schema.sql` and `python scripts/init_db.py` to provision it.

@@ -76,3 +76,9 @@ uvicorn app.main:app --reload
 # open http://127.0.0.1:8000/docs and try GET /api/v1/stores/demo-store/dashboard/today
 ```
 Dev headers (optional): `X-Dev-Role: owner|staff`, `X-Dev-Stores: demo-store`.
+
+## Rules
+- Follow the PostgreSQL and API guidance in the repository README and `docs/database-setup.md`.
+- Enforce authentication and store-level authorization on the backend.
+- Add tests for success, validation errors, permissions, retries, and relevant integration paths.
+- Update this README when endpoints, collections, environment variables, or setup steps are added.
