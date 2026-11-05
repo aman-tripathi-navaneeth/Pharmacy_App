@@ -7,6 +7,7 @@ import 'package:pharmacy_app/screens/login_screen.dart';
 void main() {
   testWidgets('M1 welcome screen opens sign in', (WidgetTester tester) async {
     await tester.pumpWidget(const PharmacyApp());
+    await tester.pumpAndSettle();
 
     expect(find.text('MediManage'), findsOneWidget);
     expect(find.text('Your pharmacy, in one place'), findsOneWidget);
@@ -93,5 +94,20 @@ void main() {
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Pharmacy app modular view & Module 5 inventory smoke test', (WidgetTester tester) async {
+    await tester.pumpWidget(const PharmacyApp(home: Module5InventoryScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pharmacy Store'), findsWidgets);
+    expect(find.text('• Module 5'), findsOneWidget);
+
+    expect(find.text('Balances'), findsOneWidget);
+    expect(find.text('Batches (FEFO)'), findsOneWidget);
+    expect(find.text('Ledger'), findsOneWidget);
+
+    expect(find.text('In-Stock Units'), findsOneWidget);
+    expect(find.text('Active Batches'), findsOneWidget);
   });
 }

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'api_session.dart';
+import 'core/theme/app_theme.dart';
+import 'core/widgets/module_drawer.dart';
+import 'modules/inventory_batches_stock_ledger/screens/inventory_dashboard_screen.dart';
+import 'modules/inventory_batches_stock_ledger/services/inventory_service.dart';
 import 'screens/account_setup_screen.dart';
 import 'screens/create_shop_screen.dart';
 import 'screens/dashboard_screen.dart';
@@ -23,7 +27,9 @@ void main() {
 }
 
 class PharmacyApp extends StatelessWidget {
-  const PharmacyApp({super.key});
+  final Widget? home;
+
+  const PharmacyApp({super.key, this.home});
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +68,7 @@ class PharmacyApp extends StatelessWidget {
       ),
       builder: (context, child) =>
           MobileViewWrapper(child: child ?? const SizedBox.shrink()),
-      home: const WelcomeScreen(),
+      home: home ?? const WelcomeScreen(),
       routes: {
         '/login': (_) => const LoginScreen(),
         '/terms': (_) =>
@@ -97,7 +103,44 @@ class PharmacyApp extends StatelessWidget {
           userRole: ApiSession.user['role']?.toString() ?? '',
           shopId: ApiSession.user['ownerStoreId']?.toString(),
         ),
+        '/inventory': (_) => const Module5InventoryScreen(),
       },
+    );
+  }
+}
+
+class Module5InventoryScreen extends StatefulWidget {
+  const Module5InventoryScreen({super.key});
+
+  @override
+  State<Module5InventoryScreen> createState() => _Module5InventoryScreenState();
+}
+
+class _Module5InventoryScreenState extends State<Module5InventoryScreen> {
+  late final InventoryService _inventoryService;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _inventoryService = InventoryService();
+  }
+
+  @override
+  void dispose() {
+    _inventoryService.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: _scaffoldKey,
+      drawer: const ModuleDrawer(activeModuleNumber: 5),
+      body: InventoryDashboardScreen(
+        service: _inventoryService,
+        onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
+      ),
     );
   }
 }
@@ -111,9 +154,11 @@ class MobileViewWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth <= 500) return child;
+        if (constraints.maxWidth <= 640) {
+          return child;
+        }
         return Scaffold(
-          backgroundColor: const Color(0xFFE2E8F0),
+          backgroundColor: const Color(0xFFF1F5F9),
           body: Center(
             child: Container(
               width: 420,

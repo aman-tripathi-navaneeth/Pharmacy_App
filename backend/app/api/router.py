@@ -7,10 +7,13 @@ from app.modules.bills.router import router as bills_router
 from app.modules.customers.router import router as customers_router
 from app.modules.email.router import router as email_router
 from app.modules.inventory.router import router as inventory_router
+from app.modules.inventory_batches_stock_ledger.router import (
+    router as inventory_batches_stock_ledger_router,
+)
 from app.modules.issues.router import router as issues_router
-from app.modules.plans.router import router as plans_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.onboarding.router import router as onboarding_router
+from app.modules.plans.router import router as plans_router
 from app.modules.prescriptions.router import router as prescriptions_router
 from app.modules.reports.router import router as reports_router
 from app.modules.shops.router import router as shops_router
@@ -29,6 +32,7 @@ api_router.include_router(onboarding_router)
 api_router.include_router(notifications_router)
 api_router.include_router(audit_router)
 api_router.include_router(inventory_router)
+api_router.include_router(inventory_batches_stock_ledger_router, tags=["Inventory, Batches & Stock Ledger"])
 api_router.include_router(plans_router)
 api_router.include_router(issues_router)
 api_router.include_router(customers_router)

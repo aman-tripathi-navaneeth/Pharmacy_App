@@ -25,8 +25,9 @@ async def _init_connection(conn: asyncpg.Connection) -> None:
 async def create_postgres_pool() -> asyncpg.Pool:
     """Create a PostgreSQL connection pool and remember it for the process."""
     global _pool
+    dsn = getattr(settings, "asyncpg_url", settings.DATABASE_URL)
     _pool = await asyncpg.create_pool(
-        settings.DATABASE_URL,
+        dsn,
         min_size=1,
         max_size=20,
         command_timeout=15,
