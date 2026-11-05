@@ -32,6 +32,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
   static const String _demoAdminId = 'superadmin@medishop.local';
   static const String _demoOwnerId = '+919876512345';
+  // Development-only convenience values. Production builds should override
+  // these with empty values (or remove the demo buttons) so credentials are
+  // never shipped in the app bundle.
+  static const String _demoAdminPassword = String.fromEnvironment(
+    'DEMO_ADMIN_PASSWORD',
+    defaultValue: 'Abhiaman@123',
+  );
+  static const String _demoOwnerPassword = String.fromEnvironment(
+    'DEMO_OWNER_PASSWORD',
+    defaultValue: 'Abhiaman@123',
+  );
 
   @override
   void initState() {
@@ -50,10 +61,11 @@ class _LoginScreenState extends State<LoginScreen> {
     switch (role) {
       case 'SUPER_ADMIN':
         _identifierController.text = _demoAdminId;
+        _passwordController.text = _demoAdminPassword;
       case 'SHOP_OWNER':
         _identifierController.text = _demoOwnerId;
+        _passwordController.text = _demoOwnerPassword;
     }
-    _passwordController.clear();
     setState(() {
       _error = null;
       _obscurePassword = true;
@@ -135,15 +147,26 @@ class _LoginScreenState extends State<LoginScreen> {
           setState(() => _error = tr('noAppRole'));
         }
       } else {
-        final responseData = jsonDecode(response.body);
-        setState(
-          () => _error =
-              responseData['message']?.toString() ?? tr('invalidCredentials'),
-        );
+        Map<String, dynamic>? responseData;
+        try {
+          responseData = jsonDecode(response.body) as Map<String, dynamic>;
+        } catch (_) {
+          responseData = null;
+        }
+        final detail = responseData?['detail'];
+        final message = responseData?['message'] ??
+            (detail is Map<String, dynamic> ? detail['message'] : detail);
+        setState(() => _error = message?.toString() ??
+            (response.statusCode >= 500
+                ? 'Server unavailable. Start the backend and verify PostgreSQL is running.'
+                : tr('invalidCredentials')));
       }
     } catch (e) {
       debugPrint('Sign-in flow failed (${e.runtimeType}): $e');
-      if (mounted) setState(() => _error = tr('connectionError'));
+      if (mounted) {
+        setState(() => _error =
+            'Cannot reach the API. Start it on 127.0.0.1:8000 or pass API_BASE_URL when running Flutter.');
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

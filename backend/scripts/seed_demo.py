@@ -20,7 +20,7 @@ async def seed_demo_data() -> None:
             "in backend/.env before seeding."
         )
 
-    pool = await asyncpg.create_pool(settings.DATABASE_URL, min_size=1, max_size=2)
+    pool = await asyncpg.create_pool(settings.asyncpg_url, min_size=1, max_size=2)
     try:
         async with pool.acquire() as conn:
             async with conn.transaction():
@@ -54,6 +54,17 @@ async def seed_demo_data() -> None:
                         admin_email,
                         admin_phone,
                     )
+                else:
+                    # Demo credentials are intentionally repeatable in local
+                    # development so an existing database cannot retain an
+                    # unknown password from an earlier seed.
+                    await conn.execute(
+                        """UPDATE users
+                           SET password_hash = $1, status = 'ACTIVE'
+                           WHERE id = $2""",
+                        hash_password(settings.seed_superadmin_password),
+                        admin_id,
+                    )
 
                 owner_identifier = settings.seed_owner_identifier.strip()
                 owner_email = (
@@ -82,6 +93,16 @@ async def seed_demo_data() -> None:
                         hash_password(settings.seed_owner_password),
                         owner_email,
                         owner_phone,
+                    )
+                else:
+                    await conn.execute(
+                        """UPDATE users
+                           SET password_hash = $1,
+                               status = CASE WHEN status = 'DISABLED' THEN status ELSE 'INVITED' END,
+                               must_change_password = TRUE
+                           WHERE id = $2""",
+                        hash_password(settings.seed_owner_password),
+                        owner_id,
                     )
 
                 shop_id = await conn.fetchval(

@@ -12,7 +12,7 @@ async def initialize_database() -> None:
         raise RuntimeError("Set DATABASE_URL in backend/.env before initializing PostgreSQL.")
 
     schema = (BACKEND_DIR / "schema.sql").read_text(encoding="utf-8")
-    connection = await asyncpg.connect(settings.DATABASE_URL, command_timeout=30)
+    connection = await asyncpg.connect(settings.asyncpg_url, command_timeout=30)
     try:
         await connection.execute(schema)
         await connection.fetchval("SELECT 1")
