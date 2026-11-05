@@ -1,11 +1,12 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends
 from pydantic import BaseModel, Field
 
 from app.common.deps import get_db, require_roles
 from app.core.errors import ApiError
 from app.db.serialize import serialize
+from app.modules.offline_sync_reliability import service as m12_service
 from app.modules.sync import service
 
 router = APIRouter(prefix="/sync", tags=["Offline Sync"])
@@ -42,15 +43,21 @@ async def sync_state(
 
 @router.post("/push")
 async def sync_push(
-    payload: SyncPushIn,
+    payload: dict[str, Any] = Body(default_factory=dict),
     user: dict[str, Any] = Depends(sync_roles),
     db: Any = Depends(get_db),
 ) -> Any:
+    ops = payload.get("operations") or []
+    # M12 format uses deviceId or clientOperationId
+    if "deviceId" in payload or (ops and isinstance(ops[0], dict) and "clientOperationId" in ops[0]):
+        store_id = str(payload.get("storeId") or user.get("storeId") or "00000000-0000-4000-9000-000000000001")
+        return serialize(m12_service.sync_push_m12(store_id, str(user.get("sub") or ""), payload))
+    parsed = SyncPushIn.model_validate(payload)
     return serialize(
         await service.push(
             db,
             _store(user),
             str(user["sub"]),
-            [op.model_dump() for op in payload.operations],
+            [op.model_dump() for op in parsed.operations],
         )
     )

@@ -14,6 +14,7 @@ import 'features/dashboard/screens/summary_screen.dart';
 import 'features/dashboard/screens/today_screen.dart';
 import 'modules/inventory_batches_stock_ledger/screens/inventory_dashboard_screen.dart';
 import 'modules/inventory_batches_stock_ledger/services/inventory_service.dart';
+import 'modules/offline_sync_reliability/module.dart';
 import 'screens/account_setup_screen.dart';
 import 'screens/create_shop_screen.dart';
 import 'screens/dashboard_screen.dart';
@@ -133,6 +134,7 @@ class PharmacyApp extends StatelessWidget {
           '/low-stock': (_) => const LowStockScreen(),
           '/reconcile': (_) => const ReconciliationScreen(),
           '/today-dashboard': (_) => const DashboardHome(),
+          '/offline-sync': (_) => const OfflineSyncReliabilityScreen(),
         },
       ),
     );

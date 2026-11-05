@@ -15,6 +15,9 @@ from app.modules.inventory_batches_stock_ledger.router import (
 )
 from app.modules.issues.router import router as issues_router
 from app.modules.notifications.router import router as notifications_router
+from app.modules.offline_sync_reliability.router import (
+    router as offline_sync_reliability_router,
+)
 from app.modules.onboarding.router import router as onboarding_router
 from app.modules.plans.router import router as plans_router
 from app.modules.prescriptions.router import router as prescriptions_router
@@ -33,6 +36,7 @@ api_router.include_router(users_router)
 api_router.include_router(shops_router)
 api_router.include_router(suppliers_router)
 api_router.include_router(sync_router)
+api_router.include_router(offline_sync_reliability_router)
 api_router.include_router(admin_router)
 api_router.include_router(onboarding_router)
 api_router.include_router(notifications_router)
