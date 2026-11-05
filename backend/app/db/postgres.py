@@ -1,6 +1,7 @@
 """PostgreSQL database connection and session management."""
 import json
 from typing import Any
+from urllib.parse import urlparse
 
 import asyncpg
 
@@ -10,6 +11,22 @@ settings = get_settings()
 
 # Module-level pool so both the app lifespan and service helpers see one instance.
 _pool: asyncpg.Pool | None = None
+
+
+def database_name(dsn: str) -> str:
+    """Extract dbname from the DSN for the /ready endpoint."""
+    path = urlparse(dsn).path.lstrip("/")
+    return path.partition("?")[0] or "postgres"
+
+
+async def create_pool(dsn: str) -> asyncpg.Pool:
+    """Create the connection pool. Created inside lifespan because it is async."""
+    normalized = (
+        "postgresql://" + dsn[len("postgresql+asyncpg://"):]
+        if dsn.startswith("postgresql+asyncpg://")
+        else dsn
+    )
+    return await asyncpg.create_pool(normalized, min_size=1, max_size=10)
 
 
 async def _init_connection(conn: asyncpg.Connection) -> None:

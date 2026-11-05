@@ -8,7 +8,7 @@ from app.api.router import api_router
 from app.core.config import get_settings
 from app.core.database import close_database_engine, get_async_engine, ping_database
 from app.core.errors import install_error_handlers
-from app.db.postgres import close_postgres_pool, create_postgres_pool
+from app.db.postgres import close_postgres_pool, create_postgres_pool, database_name
 
 settings = get_settings()
 logger = logging.getLogger("pharmacy.api")
@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
     app.state.pg_pool = None
     app.state.db_engine = None
 
-    if settings.DATABASE_URL.strip():
+    if settings.effective_database_url.strip():
         try:
             app.state.pg_pool = await create_postgres_pool()
         except Exception:
@@ -64,7 +64,7 @@ async def ready() -> dict[str, str]:
     if pool is None and engine is None:
         code = (
             "DATABASE_NOT_CONFIGURED"
-            if not settings.DATABASE_URL.strip()
+            if not settings.effective_database_url.strip()
             else "DATABASE_UNAVAILABLE"
         )
         raise HTTPException(
@@ -79,8 +79,11 @@ async def ready() -> dict[str, str]:
         try:
             async with pool.acquire() as connection:
                 await connection.fetchval("SELECT 1")
-            return {"status": "ready", "database": settings.DATABASE_URL.rsplit("/", 1)[-1]}
-        except Exception as error:
+            return {
+                "status": "ready",
+                "database": database_name(settings.effective_database_url),
+            }
+        except Exception:
             logger.exception("PostgreSQL pool readiness check failed")
 
     if engine is not None:

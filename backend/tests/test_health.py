@@ -11,6 +11,8 @@ def test_health_endpoint() -> None:
 
 
 def test_ready_without_database_configuration(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "postgres_url", "")
+    monkeypatch.setattr(settings, "database_url", "")
     monkeypatch.setattr(settings, "DATABASE_URL", "")
     with TestClient(app) as client:
         response = client.get("/ready")

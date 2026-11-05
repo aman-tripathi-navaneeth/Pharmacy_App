@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = ""
     database_url: str = ""
+    postgres_url: str = ""
     cors_origins: str = "*"
 
     jwt_access_secret: str = "development-only-change-this-secret-before-deploy"
@@ -45,7 +46,7 @@ class Settings(BaseSettings):
 
     @property
     def effective_database_url(self) -> str:
-        return self.database_url or self.DATABASE_URL
+        return self.database_url or self.DATABASE_URL or self.postgres_url
 
     @property
     def asyncpg_url(self) -> str:
@@ -65,10 +66,14 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_jwt_secret_and_sync_db(self) -> "Settings":
-        if not self.database_url and self.DATABASE_URL:
-            self.database_url = self.DATABASE_URL
-        elif not self.DATABASE_URL and self.database_url:
-            self.DATABASE_URL = self.database_url
+        resolved = self.database_url or self.DATABASE_URL or self.postgres_url
+        if resolved:
+            if not self.database_url:
+                self.database_url = resolved
+            if not self.DATABASE_URL:
+                self.DATABASE_URL = resolved
+            if not self.postgres_url:
+                self.postgres_url = resolved
 
         if len(self.jwt_access_secret.encode("utf-8")) < 32:
             raise ValueError("JWT_ACCESS_SECRET must be at least 32 bytes.")

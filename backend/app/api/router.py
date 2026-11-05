@@ -22,6 +22,9 @@ from app.modules.reports.router import router as reports_router
 from app.modules.shops.router import router as shops_router
 from app.modules.suppliers.router import router as suppliers_router
 from app.modules.sync.router import router as sync_router
+from app.modules.today_dashboard_reports.router import (
+    router as dashboard_reports_router,
+)
 from app.modules.users.router import router as users_router
 
 api_router = APIRouter()
@@ -40,6 +43,7 @@ api_router.include_router(
     expiry_low_stock_reconciliation_router,
     tags=["Expiry, Low Stock & Reconciliation"],
 )
+api_router.include_router(dashboard_reports_router)
 api_router.include_router(plans_router)
 api_router.include_router(issues_router)
 api_router.include_router(customers_router)

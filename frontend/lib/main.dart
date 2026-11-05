@@ -8,6 +8,10 @@ import 'core/widgets/module_drawer.dart';
 import 'data/expiry_repository.dart';
 import 'data/low_stock_repository.dart';
 import 'data/reconciliation_repository.dart';
+import 'features/dashboard/screens/dashboard_frame.dart';
+import 'features/dashboard/screens/purchases_screen.dart';
+import 'features/dashboard/screens/summary_screen.dart';
+import 'features/dashboard/screens/today_screen.dart';
 import 'modules/inventory_batches_stock_ledger/screens/inventory_dashboard_screen.dart';
 import 'modules/inventory_batches_stock_ledger/services/inventory_service.dart';
 import 'screens/account_setup_screen.dart';
@@ -128,8 +132,42 @@ class PharmacyApp extends StatelessWidget {
           '/expiry': (_) => const ExpiryDashboardScreen(),
           '/low-stock': (_) => const LowStockScreen(),
           '/reconcile': (_) => const ReconciliationScreen(),
+          '/today-dashboard': (_) => const DashboardHome(),
         },
       ),
+    );
+  }
+}
+
+/// Hosts the three dashboard tabs, keeping each screen's state alive.
+class DashboardHome extends StatefulWidget {
+  const DashboardHome({super.key});
+
+  @override
+  State<DashboardHome> createState() => _DashboardHomeState();
+}
+
+class _DashboardHomeState extends State<DashboardHome> {
+  DashboardTab _tab = DashboardTab.today;
+
+  @override
+  Widget build(BuildContext context) {
+    return IndexedStack(
+      index: _tab.index,
+      children: <Widget>[
+        TodayScreen(
+          activeTab: _tab,
+          onTabSelected: (DashboardTab t) => setState(() => _tab = t),
+        ),
+        SummaryScreen(
+          activeTab: _tab,
+          onTabSelected: (DashboardTab t) => setState(() => _tab = t),
+        ),
+        PurchasesScreen(
+          activeTab: _tab,
+          onTabSelected: (DashboardTab t) => setState(() => _tab = t),
+        ),
+      ],
     );
   }
 }

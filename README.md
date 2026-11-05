@@ -2,6 +2,14 @@
 
 The project has two application folders: `backend` (FastAPI) and `frontend` (Flutter). The backend uses PostgreSQL as its only database.
 
+## Product principles
+- Mobile-first, practical for small/rural medical shops; support Telugu and English in the product UI.
+- The Inventory, Batches & Stock Ledger is the source of truth for stock. All stock changes must be recorded through controlled ledger movements.
+- Purchase-invoice OCR and end-of-day sales-report OCR create **drafts**. Stock changes only after a user reviews and confirms the document.
+- Duplicate report submissions/retries must not apply the same movement twice.
+- Do not put Postgres credentials in frontend/mobile code. Only the backend connects to the database.
+- Never silently delete posted stock movements; use a reversal or adjustment with an audit trail.
+
 ## Requirements
 
 - Python 3.11 or later
