@@ -158,3 +158,6 @@ C:\src\flutter\bin\flutter.bat test
 - Reconciling audits is permanent and immutable, posting signed adjustment transactions to the stock ledger.
 
 
+- Follow PostgreSQL and API guidance in the repository README.
+- Enforce authentication and store-level authorization on the backend.
+- Maintain automated tests for success, validation errors, permissions, and integration paths.
