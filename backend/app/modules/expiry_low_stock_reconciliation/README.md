@@ -63,3 +63,9 @@ Tests cover expiry summaries, status filtering, search, pagination, invalid stat
 2. Integrate reconciliation with the shared inventory movement service.
 3. Verify the implementation against the agreed inventory schema and integration tests before production deployment.
 4. Review the Starlette/httpx deprecation warning separately from functional test results.
+
+## Rules
+- Follow the PostgreSQL and API guidance in the repository README and `docs/database-setup.md`.
+- Enforce authentication and store-level authorization on the backend.
+- Add tests for success, validation errors, permissions, retries, and relevant integration paths.
+- Update this README when endpoints, collections, environment variables, or setup steps are added.
